@@ -5,17 +5,17 @@ from __future__ import absolute_import, unicode_literals
 import os.path
 from collections import deque
 
-from opster import command, dispatch
+import opster
 
 import nip
 
 #: Options, valid for each of `nip` commands.
-globaloptions = [("v", "verbose", False, "enable additional output"),
-                 ("q", "quiet", False, "suppress all output")]
+globaloptions = [("q", "quiet", False, "suppress any possible output"),
+                 ("c", "config", "config.json", "path to `nip` config file")]
 
 
-@command()
-def index(reference, read, *reads, **kwargs):
+@nip.setup
+def index(config, read, *reads):
     def popread(sep="_"):
         """Returns the next 'valid' read in a sorted read list."""
         while reads:
@@ -50,8 +50,8 @@ def index(reference, read, *reads, **kwargs):
         except IndexError:
             continue  # No moar reads?
 
-    nip.index(reference, pairs)
+    nip.index(config, pairs)
 
 
 if __name__ == "__main__":
-    dispatch(globaloptions=globaloptions)
+    opster.dispatch(globaloptions=globaloptions)

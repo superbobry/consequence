@@ -1,2 +1,4 @@
+Logbook==0.3
+iterpipes==0.4
 opster==3.5
 pysam==0.6

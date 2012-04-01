@@ -1,0 +1,8 @@
+{
+    "reference_fasta": "",
+    "reference_index": "",
+    "alignment_options": ""
+    "dbsnp": ""
+
+    "tmp_dir": "/tmp"
+}

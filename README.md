@@ -33,3 +33,14 @@ Current vision:
 4. Call SNPs with either
    [UnifiedGenotyper](http://www.broadinstitute.org/gsa/wiki/index.php/Unified_genotyper)
    or `samtools mpileup`.
+
+Requirements
+------------
+
+`ngs-serach` relies on the following programs, which should be available in `$PATH`:
+
+* [Bowtie](http://bowtie-bio.sourceforge.net/index.shtml)
+* [samtools](samtools.sourceforge.net/samtools.shtml)
+* UnifiedGenotyper from [GATK](http://www.broadinstitute.org/gsa/wiki/index.php/The_Genome_Analysis_Toolkit)
+
+*Note*: Python dependencies are listed in `requirements.txt`, installable by [pip](http://www.pip-installer.org).

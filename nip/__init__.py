@@ -16,6 +16,7 @@ import os.path
 import tempfile
 from functools import wraps
 
+import logbook
 import opster
 import pysam
 from iterpipes import cmd, check_call
@@ -44,7 +45,11 @@ def index(config, reads):
         sorted_alignments.append(fname)
 
     # Call SNPs in the sorted BAM files.
-    call_snps(config, sorted_alignments)
+    variances = call_snps(config, sorted_alignments)
+
+    # TODO(Sergei): filter low quality SNPs?
+    # TODO(Sergei): merge resulting VCF file with 'nip.index'?
+
 
 # Internal.
 
@@ -99,6 +104,7 @@ def align_reads(config, left, right):
     """Run `bowtie` on a given read pair and returns a path to the
     resulting BAM file.
     """
+    logbook.info("Aligning [{0}, {1}]", left, right)
     fname = tempfile.mktemp(suffix=".bam", dir=config["tmp_dir"])
     check_call(cmd("bowtie "
                    "{0[alignment_options]} "
@@ -110,6 +116,7 @@ def align_reads(config, left, right):
 
 def call_snps(config, sorted_alignments):
     """Run `UnifiedGenotyper` on a given list of sorted BAM files."""
+    logbook.info("Calling SNPs on {0}", ", ".join(sorted_alignments))
     fname = tempfile.mktemp(suffix=".vcf", dir=config["tmp_dir"])
     check_call(cmd("GenomeAnalysisTK.jar "
                    "-R {0[reference_fasta]} "

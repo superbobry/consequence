@@ -39,7 +39,7 @@ def index(config, reads):
 
     for alignment in [align_reads(config, left, right) for left, right in reads]:
         fname = tempfile.mktemp(suffix=".bam", dir=config["tmp_dir"])
-        pysam.sort(alignment, fname)
+        pysam.sort(alignment, stripext(fname))
         os.remove(alignment)
         pysam.index(fname)
         sorted_alignments.append(fname)
@@ -124,4 +124,14 @@ def call_snps(config, sorted_alignments):
                    "--dbsnp {0[dbsnp]} ",
                    "-o {1}".format(config, fname) +
                    " ".join("-I {0}".format(a) for a in sorted_alignments)))
+    return fname
+
+
+def stripext(path):
+    """Removes file extension from a given `path`.
+
+    >>> stripext("foobar.baz")
+    "foobar"
+    """
+    fname, ext = os.path.splitext(path)
     return fname

@@ -9,12 +9,12 @@ Introduction
 * Importance of SNP calling, applications;
 * Major problems for accurate SNP calling; current trend -- a lot of cheap
   but inaccurate reads, which leads to unavoidable errors on all phases of
-  variance detection;
+  variant detection;
 
 Existing tools for SNP calling use Bayesian inference to pick the
 *most likely* genotype for each particular site [2]; unfortunately, almost
 all of these tools (GATK, samtools, SOAPsnp) require preprocessing of raw
-sequencing data, to facilitate variance calling. This applies to both new
+sequencing data, to facilitate variant calling. This applies to both new
 SNP discovery and finding already known SNPs.
 
 In general, obtaining a complete and accurate variation record from
@@ -42,7 +42,7 @@ Methods
 ### Index organization
 
 We maintain a separate *index* for each human chromosome. An index is
-basically a [persistent trie] [3], indexed by variance sites' positions
+basically a [persistent trie] [3], indexed by variant sites' positions
 in the reference genome. Each position is mapped to a 4-element tuple,
 representing possible mutations for each of the genomic bases: `(A, C, G, T)`.
 One of the four positions is **always** empty, because it conforms
@@ -65,13 +65,15 @@ single indexed genome with id `"HTC10499_s_8"` is present for variant
 ### Pipeline
 
 1. Each read from the sequencing data is aligned to the *partial* reference
-   genome (details on how this sequence is obtained will be given later).
+   genome (details on how this sequence is obtained are given later).
    No local realignment is necessary, since we only target SNPs and not
    indels or CNVs.
 2. After the read is mapped, we know its exact position in the reference
    genome (including both chromosome name and base number). Thus, for each
-   aligned read we lookup the position in the index for the corresponding
-   chromosome.
+   aligned read we lookup the position in the corresponding chromosomal
+   index.
+
+* Describe how low coverage variants are filtered out.
 
 ### Updating the index
 
@@ -85,7 +87,7 @@ new genome to be indexed.
 #### Rebuilding *partial* reference
 
 To speedup the alignment step we only store meaningful regions of the
-reference genome; that is -- regions with at least one indexed variance
+reference genome; that is -- regions with at least one indexed variant
 per doubled read length (150 base pairs for Illumina reads?). An obvious
 downside of this approach is that resulting alignments will have positions
 relative to the *partial* reference, instead of the original one. So an

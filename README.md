@@ -41,13 +41,20 @@ Methods
 
 ### Index organization
 
-We maintain a separate *index* for each human chromosome. An index is
-basically a [persistent trie] [3], indexed by variant sites' positions
-in the reference genome. Each position is mapped to a 4-element tuple,
-representing possible mutations for each of the genomic bases: `(A, C, G, T)`.
-One of the four positions is **always** empty, because it conforms
-to the reference base; the rest contain a possibly empty list of
-genome identifiers with a corresponding variant. For example:
+We maintain a separate *index* for each human chromosome. The index is
+stored in a [persistent trie] [3], because:
+
+* persistence allows for easy serialization and parallel independent
+  updates for each of the new genomes;
+* trie guarantees /O(bits of position)/ lookups and updates for each
+  genomic position and reduced memory consumption.
+
+Trie is indexed by variant sites' positions in the reference genome.
+Each position is mapped to a 4-element tuple, representing possible
+mutations for each of the genomic bases: `(A, C, G, T)`. One of the four
+positions is **always** empty, because it conforms to the reference
+base; the rest contain a possibly empty list of genome identifiers
+with a corresponding variant. For example:
 
             A   C     G                 T
             |   |     |                 |
@@ -73,7 +80,29 @@ single indexed genome with id `"HTC10499_s_8"` is present for variant
    aligned read we lookup the position in the corresponding chromosomal
    index.
 
-* Describe how low coverage variants are filtered out.
+### Lookups
+
+To lookup an aligned read (encoded in BAM or SAM) in the chromosomal index
+we first unpack the CIGAR string, as described in
+[SAM Format Specification] [4], ignoring everything but *Match-Mismatch*
+blocks. This gives us a list of aligned positions in the corresponding
+segment sequence. Then for each position we fetch a 4-element tuple from
+the index and if the base in the segment sequence matches any
+non-reference bases we cache it along with the looked up position and
+the original read.
+
+After all reads are processed in this way we have a cache of all the
+possible SNPs, each of which has a different quality, which can be
+calculated from SNP frequency, aligment quality and nucleotide coverage.
+
+> ... we don’t want to trust SNPs at sites with super high coverage,
+> because they might be represent variation between variable copy number
+> repeats -- http://ged.msu.edu/angus/tutorials-2011/snp_tutorial.html
+
+* Describe how to covert *partial* index positions to the *full* index.
+* Describe how we handle diploid chromosomes.
+
+[4]: http://samtools.sourceforge.net/SAM1.pdf
 
 ### Updating the index
 
@@ -88,11 +117,11 @@ new genome to be indexed.
 
 To speedup the alignment step we only store meaningful regions of the
 reference genome; that is -- regions with at least one indexed variant
-per doubled read length (150 base pairs for Illumina reads?). An obvious
-downside of this approach is that resulting alignments will have positions
-relative to the *partial* reference, instead of the original one. So an
-**extra index**, mapping intervals from *partial* reference to the original
-reference, is required.
+per doubled insert size. An obvious downside of this approach is that
+resulting alignments will have positions relative to the *partial*
+reference, instead of the original one. So an **extra index**, mapping
+intervals from *partial* reference to the original reference, is
+required.
 
 ### Accuracy
 

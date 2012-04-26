@@ -125,11 +125,18 @@ reference, instead of the original one. So an **extra index**, mapping
 intervals from *partial* reference to the original reference, is
 required.
 
-### Accuracy
+#### Example
 
-* Is it possible to estimate accuracy of our approach? on first thought
-  it follows directly from reads quality and alignment accuracy (see also
-  note above the quality of NGS reads);
+Suppose we have the following SNPs in some chromosomal index:
+
+    |902455 | A -> T|
+    |1677400| C -> A|
+    |439731 | T -> C|
+
+* What insert size to use? 1000genomes use different insert sizes for
+  different samples, see:
+
+  http://www.1000genomes.org/faq/what-library-insert-sizes-where-used-1000-genomes-project
 
 Results
 -------

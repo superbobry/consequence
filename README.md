@@ -92,8 +92,10 @@ non-reference bases we cache it along with the looked up position and
 the original read.
 
 After all reads are processed in this way we have a cache of all the
-possible SNPs, each of which has a different quality, which can be
-calculated from SNP frequency, aligment quality and nucleotide coverage.
+possible SNPs, each of which has a different *quality*. SNP quality
+is calculated from SNP frequency in the processed reads, aligment
+quality (MAP!) for the reads cached with a particular SNP and nucleotide
+coverage of the correscponding genomic position.
 
 > ... we don’t want to trust SNPs at sites with super high coverage,
 > because they might be represent variation between variable copy number

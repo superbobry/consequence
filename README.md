@@ -87,22 +87,25 @@ we first unpack the CIGAR string, as described in
 [SAM Format Specification] [4], ignoring everything but *Match-Mismatch*
 blocks. This gives us a list of aligned positions in the corresponding
 segment sequence. Then for each position we fetch a 4-element tuple from
-the index and if the base in the segment sequence matches any
-non-reference bases we cache it along with the looked up position and
+the index and **if the base in the segment sequence matches any
+non-reference bases** we cache it along with the looked up position and
 the original read.
 
 After all reads are processed in this way we have a cache of all the
 possible SNPs, each of which has a different *quality*. SNP quality
 is calculated from SNP frequency in the processed reads, aligment
 quality (MAP!) for the reads cached with a particular SNP and nucleotide
-coverage of the correscponding genomic position.
+coverage of the corresponding genomic position. So, all we have to
+do is -- pick for each genomic position an allele with the highest
+*quality*.
 
-> ... we don’t want to trust SNPs at sites with super high coverage,
-> because they might be represent variation between variable copy number
-> repeats -- http://ged.msu.edu/angus/tutorials-2011/snp_tutorial.html
+#### A note on diploidy
+
+The lookup procedure described above can be easily extended to handle
+diploid genomes. We just need to pick *two* alleles with the highest
+*quality* for each genomic position, instead of a single allele.
 
 * Describe how to covert *partial* index positions to the *full* index.
-* Describe how we handle diploid chromosomes.
 
 [4]: http://samtools.sourceforge.net/SAM1.pdf
 

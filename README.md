@@ -105,7 +105,13 @@ The lookup procedure described above can be easily extended to handle
 diploid genomes. We just need to pick *two* alleles with the highest
 *quality* for each genomic position, instead of a single allele.
 
-* Describe how to covert *partial* index positions to the *full* index.
+#### A note on *partial* reference
+
+Because we use a *partial* reference sequnce, aligned positions in the
+SAM or BAM file should be converted, to the corresponding genomic
+positions. In the simples case, this can be done with a map from positions
+in the *partial* reference to positions in the full reference. Note,
+that a more space-optimal approach would be to use an interval tree.
 
 [4]: http://samtools.sourceforge.net/SAM1.pdf
 
@@ -122,11 +128,9 @@ new genome to be indexed.
 
 To speedup the alignment step we only store meaningful regions of the
 reference genome; that is -- regions with at least one indexed variant
-per doubled insert size. An obvious downside of this approach is that
-resulting alignments will have positions relative to the *partial*
-reference, instead of the original one. So an **extra index**, mapping
-intervals from *partial* reference to the original reference, is
-required.
+per doubled insert size (strictly speaking the insert size varies from
+platform to platform and from run to run, so we use a currently available
+upper bound for paried-end reads -- **???**).
 
 #### Example
 

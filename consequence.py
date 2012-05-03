@@ -12,16 +12,11 @@ import cPickle
 import glob
 import operator
 import os.path
-import re
 import sys
 from collections import defaultdict, namedtuple, MutableMapping
 
 import vcf
 import pysam
-
-
-#: A naive regex to extract chromosome # from 'RNAME' SAM / BAM field.
-re_chr = re.compile("\d+")
 
 
 _Chunk = namedtuple("_Chunk", list("ACGT"))
@@ -116,23 +111,18 @@ def naive_lookup(seq_path):
     # read quality as well for further SNP evaluation.
     snps = defaultdict(int)
     for record in pysam.Samfile(seq_path, "rb"):
-        if record.is_duplicate or record.is_unmapped:
+        if record.is_duplicate or record.is_unmapped or record.tid < 0:
             continue
+
+        chrom = record.tid
 
         for pos in record.positions:
             base = record.query[pos - record.pos - record.qstart]
 
-            try:
-                [chr] = re_chr.findall(str(record.rname))
-            except (ValueError, TypeError):
-                print("Oops, malformed RNAME for read {0.qname}: {0.rname}"
-                      .format(record))
+            if base not in "ACGT" or (chrom, pos) not in g:
                 continue
 
-            if (chr, pos) not in g or base not in "ACGT":
-                continue
-
-            if getattr(g[chr, pos], base) is not None:
+            if getattr(g[chrom, pos], base) is not None:
                 snps[pos, base] += 1
 
     # Filter the resulting mapping and output a set of the corresponding
@@ -140,7 +130,7 @@ def naive_lookup(seq_path):
 
     # Should we store frequency of an SNP in a particular sample in the
     # index?
-    return snp
+    return snps
 
 
 if __name__ == "__main__":

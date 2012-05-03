@@ -107,9 +107,9 @@ diploid genomes. We just need to pick *two* alleles with the highest
 
 #### A note on *partial* reference
 
-Because we use a *partial* reference sequnce, aligned positions in the
+Because we use a *partial* reference sequence, aligned positions in the
 SAM or BAM file should be converted, to the corresponding genomic
-positions. In the simples case, this can be done with a map from positions
+positions. In the simplest case, this can be done with a map from positions
 in the *partial* reference to positions in the full reference. Note,
 that a more space-optimal approach would be to use an interval tree.
 
@@ -128,9 +128,12 @@ new genome to be indexed.
 
 To speedup the alignment step we only store meaningful regions of the
 reference genome; that is -- regions with at least one indexed variant
-per doubled insert size (strictly speaking the insert size varies from
-platform to platform and from run to run, so we use a currently available
-upper bound for paried-end reads -- **???**).
+per doubled insert size (strictly speaking, the insert size varies from
+platform to platform and from run to run, so we use double maximum
+insert size, found in the latest 1000genomes [release] [5] -- **7000**
+base pairs).
+
+[5]: ftp://ftp.1000genomes.ebi.ac.uk/vol1/ftp/sequence.index
 
 #### Example
 
@@ -140,15 +143,10 @@ Suppose we have the following SNPs in some chromosomal index:
     |1677400| C -> A|
     |439731 | T -> C|
 
-* What insert size to use? 1000genomes use different insert sizes for
-  different samples, see:
-
-  http://www.1000genomes.org/faq/what-library-insert-sizes-where-used-1000-genomes-project
-
 Results
 -------
 
-* Compare to Crossbow [4] and SNiPlay [5].
+* Compare to [Crossbow] [6] and [SNiPlay] [7].
 
-[4]: http://www.ncbi.nlm.nih.gov/pubmed/19930550
-[5]: http://www.ncbi.nlm.nih.gov/pmc/articles/PMC3102043/
+[6]: http://www.ncbi.nlm.nih.gov/pubmed/19930550
+[7]: http://www.ncbi.nlm.nih.gov/pmc/articles/PMC3102043/

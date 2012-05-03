@@ -1,15 +1,8 @@
 NGS Search
 ==========
 
-Note: '*' выделены места, которые еще предстоит дописать.
-
 Introduction
 ------------
-
-* Importance of SNP calling, applications;
-* Major problems for accurate SNP calling; current trend -- a lot of cheap
-  but inaccurate reads, which leads to unavoidable errors on all phases of
-  variant detection;
 
 Existing tools for SNP calling use Bayesian inference to pick the
 *most likely* genotype for each particular site [2]; unfortunately, almost
@@ -134,14 +127,6 @@ insert size, found in the latest 1000genomes [release] [5] -- **7000**
 base pairs).
 
 [5]: ftp://ftp.1000genomes.ebi.ac.uk/vol1/ftp/sequence.index
-
-#### Example
-
-Suppose we have the following SNPs in some chromosomal index:
-
-    |902455 | A -> T|
-    |1677400| C -> A|
-    |439731 | T -> C|
 
 Results
 -------

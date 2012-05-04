@@ -66,7 +66,10 @@ class Genome(MutableMapping):
         return ((chr, pos) for pos in self.cache[chr] for chr in self.cache)
 
     def __contains__(self, (chr, pos)):
-        return self.get((chr, pos)) is not None
+        if chr not in self.cache:
+            self.load_index(chr)
+
+        return pos in self.cache[chr]
 
     def __getitem__(self, (chr, pos)):
         if chr not in self.cache:
@@ -106,15 +109,16 @@ def update_index(seq_path, seq_id):
 
 def naive_lookup(seq_path):
     g = Genome()
+    f = pysam.Samfile(seq_path, "rb")
 
     # A mapping of (pos, base) -> frequency; would be nice to store
     # read quality as well for further SNP evaluation.
     snps = defaultdict(int)
-    for record in pysam.Samfile(seq_path, "rb"):
+    for record in f:
         if record.is_duplicate or record.is_unmapped or record.tid < 0:
             continue
 
-        chrom = record.tid
+        chrom = f.getrname(record.tid)
 
         for pos in record.positions:
             base = record.query[pos - record.pos - record.qstart]

@@ -8,6 +8,7 @@
 
 from __future__ import print_function
 
+import csv
 import cPickle
 import glob
 import operator
@@ -107,13 +108,12 @@ def update_index(seq_path, seq_id):
     g.dump()
 
 
-def naive_lookup(seq_path):
+def naive_lookup(seq_path, is_diploid=True):
     g = Genome()
     f = pysam.Samfile(seq_path, "rb")
 
-    # A mapping of (pos, base) -> frequency; would be nice to store
-    # read quality as well for further SNP evaluation.
-    snps = defaultdict(int)
+    cov  = defaultdict(int)
+    snps = defaultdict(lambda: defaultdict(int))
     for record in f:
         if record.is_duplicate or record.is_unmapped or record.tid < 0:
             continue
@@ -127,10 +127,27 @@ def naive_lookup(seq_path):
                 continue
 
             if getattr(g[chrom, pos], base) is not None:
-                snps[pos, base] += 1
+                cov[pos] += 1
+                snps[chrom, pos][base] += record.mapq
 
     # Filter the resulting mapping and output a set of the corresponding
     # genome identifiers.
+    cov_threshold = max(cov.itervalues()) / 2.
+
+    tsv = csv.writer(sys.stdout,
+                     ["rsid", "chromosome", "position", "genotype"],
+                     delimiter="\t")
+    for (chrom, pos), candidates in snps.iteritems():
+        if cov[pos] <= cov_threshold:
+            continue
+
+        # Order candidates by quality and pick a single allele in the
+        # monoploid case, or two alleles in the diploid one.
+        candidates = sorted(candidates.iteritems(),
+                            key=lambda (_, quality): quality,
+                            reverse=True)
+        genotype = "".join(base for (base, _) in candidates[:is_diploid + 1])
+        tsv.writerow(["*", chrom, str(pos), genotype])
 
     # Should we store frequency of an SNP in a particular sample in the
     # index?

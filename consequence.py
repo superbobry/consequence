@@ -38,26 +38,21 @@ class Genome(MutableMapping):
 
     def dump(self):
         for chr in self.cache:
-            self.dump_index(chr)
+            path = os.path.join(self.base_path, "{0}.index".format(chr))
+            cPickle.dump(self.cache[chr], open(path, "wb"))
 
-    def load(self):
-        for chr in glob.glob(os.path.join(self.base_path, "*.index")):
-            self.load_index(chr)
-
-    def load_index(self, chr):
-        path = os.path.join(self.base_path, "{0}.index".format(chr))
-        if os.path.isfile(path):
-            # Note(Sergei): this is probably the dumbest thing possible,
-            # but hey -- it's still better than nothing ;)
-            self.cache[chr] = cPickle.load(open(path, "rb"))
-        else:
-            # Yeah-yeah, it's not a 'persistent trie', because there
-            # isn't one avaiable for Python yet.
-            self.cache[chr] = {}
-
-    def dump_index(self, chr):
-        path = os.path.join(self.base_path, "{0}.index".format(chr))
-        cPickle.dump(self.cache[chr], open(path, "wb"))
+    def load(self, chrs=None):
+        chrs = chrs or glob.glob(os.path.join(self.base_path, "*.index"))
+        for chr in chrs:
+            path = os.path.join(self.base_path, "{0}.index".format(chr))
+            if os.path.isfile(path):
+                # Note(Sergei): this is probably the dumbest thing possible,
+                # but hey -- it's still better than nothing ;)
+                self.cache[chr] = cPickle.load(open(path, "rb"))
+            else:
+                # Yeah-yeah, it's not a 'persistent trie', because there
+                # isn't one avaiable for Python yet.
+                self.cache[chr] = {}
 
     def __len__(self):
         # Obviously, this does *NOT* include non-cached indices.

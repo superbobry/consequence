@@ -41,9 +41,16 @@ class Genome(MutableMapping):
             path = os.path.join(self.base_path, "{0}.index".format(chr))
             cPickle.dump(self.cache[chr], open(path, "wb"))
 
-    def load(self, chrs=None):
-        chrs = chrs or glob.glob(os.path.join(self.base_path, "*.index"))
+    def load(self, *chrs):
+        if not chrs:
+            fnames = glob.glob(os.path.join(self.base_path, "*.index"))
+            chrs = [os.path.basename(name)
+                    for name, _ext in map(os.path.splitext, fnames)]
+
         for chr in chrs:
+            if chr in self.cache:
+                continue  # Oops, already got that sequence loaded.
+
             path = os.path.join(self.base_path, "{0}.index".format(chr))
             if os.path.isfile(path):
                 # Note(Sergei): this is probably the dumbest thing possible,
@@ -54,6 +61,9 @@ class Genome(MutableMapping):
                 # isn't one avaiable for Python yet.
                 self.cache[chr] = {}
 
+    def __repr__(self):
+        return "<Genome: {0!r}>".format(self.cache)
+
     def __len__(self):
         # Obviously, this does *NOT* include non-cached indices.
         return sum(map(len, self.cache))
@@ -63,19 +73,19 @@ class Genome(MutableMapping):
 
     def __contains__(self, (chr, pos)):
         if chr not in self.cache:
-            self.load_index(chr)
+            self.load(chr)
 
         return pos in self.cache[chr]
 
     def __getitem__(self, (chr, pos)):
         if chr not in self.cache:
-            self.load_index(chr)
+            self.load(chr)
 
         return self.cache[chr][pos]
 
     def __setitem__(self, (chr, pos), chunk):
         if chr not in self.cache:
-            self.load_index(chr)
+            self.load(chr)
 
         self.cache[chr][pos] = chunk
 

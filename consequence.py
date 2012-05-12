@@ -79,26 +79,54 @@ class Genome(MutableMapping):
 
         self.cache[chr][pos] = chunk
 
-    def __delitem__(self, (chr, pos)):
+    def __delitem__(self, (chr , pos)):
         del self.cache[chr][pos]
 
 
-def update_index(seq_path, seq_id):
+def fetch_chrom_offsets(ref_path):
+    if not os.path.isfile(ref_path):
+        raise RuntimeError("Invalid reference sequence: {0!r}"
+                           .format(ref_path))
+
+    idx_path = "{0}.fai".format(ref_path)
+    # Note(Sergei): the latest version of 'pysam' segfaults on 'P.stipitis'
+    # reference, so we use the cli version for now.
+    # pysam.faidx(ref_path)
+    if (os.system("samtools faidx {0}".format(ref_path)) or
+        not os.path.isfile(idx_path)):
+        raise RuntimeError("Failed to index reference sequence: {0!r}"
+                           .format(ref_path))
+
+    current, offsets = 0, {}
+    for row in csv.reader(open(idx_path), delimiter="\t"):
+        name, length = row[:2]
+        offsets[name] = current
+        current += int(length)
+
+    return offsets
+
+
+def update_index(ref_path, seq_path, seq_id):
     g = Genome()
+    offsets = fetch_chrom_offsets(ref_path)
 
     for record in vcf.VCFReader(open(seq_path, "rb")):
         if not record.is_snp:
             continue
 
-        g.setdefault((record.CHROM, record.POS), Chunk(**{record.REF: None}))
+        # VCF contains positions relative to *chromosome* start, so we
+        # have to convert them to absolute genomic positions before
+        # adding to the index.
+        chrom = record.CHROM
+        pos = record.POS + offsets[chrom]
+        g.setdefault((chrom, pos), Chunk(**{record.REF: None}))
 
         for alt in filter(operator.truth, record.ALT):
-            known = getattr(g[record.CHROM, record.POS], alt) or set()
+            known = getattr(g[chrom, pos], alt) or set()
 
             if seq_id not in known:
                 known.add(seq_id)
-                g[record.CHROM, record.POS] = \
-                    g[record.CHROM, record.POS]._replace(**{alt: known})
+                g[chrom, pos] = g[chrom, pos]._replace(**{alt: known})
 
     g.dump()
 
@@ -150,6 +178,6 @@ def naive_lookup(seq_path, is_diploid=True):
 
 
 if __name__ == "__main__":
-    # update_index(seq_path, seq_id)
+    # update_index(ref_path, seq_path, seq_id)
     # naive_lookup(seq_path)
     pass

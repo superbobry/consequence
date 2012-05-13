@@ -93,59 +93,44 @@ class Genome(MutableMapping):
         del self.cache[chr][pos]
 
 
-def fetch_chrom_offsets(ref_path):
-    if not os.path.isfile(ref_path):
-        raise RuntimeError("Invalid reference sequence: {0!r}"
-                           .format(ref_path))
-
-    idx_path = "{0}.fai".format(ref_path)
-    # Note(Sergei): the latest version of 'pysam' segfaults on 'P.stipitis'
-    # reference, so we use the cli version for now.
-    # pysam.faidx(ref_path)
-    if (os.system("samtools faidx {0}".format(ref_path)) or
-        not os.path.isfile(idx_path)):
-        raise RuntimeError("Failed to index reference sequence: {0!r}"
-                           .format(ref_path))
-
-    current, offsets = 0, {}
-    for row in csv.reader(open(idx_path), delimiter="\t"):
-        name, length = row[:2]
-        offsets[name] = current
-        current += int(length)
-
-    return offsets
-
-
-def update_index(ref_path, seq_path, seq_id):
+def update_index(seq_path, seq_id):
     g = Genome()
-    offsets = fetch_chrom_offsets(ref_path)
 
     for record in vcf.VCFReader(open(seq_path, "rb")):
         if not record.is_snp:
             continue
 
-        # VCF contains positions relative to *chromosome* start, so we
-        # have to convert them to absolute genomic positions before
-        # adding to the index.
-        chrom = record.CHROM
-        pos = record.POS + offsets[chrom]
-        g.setdefault((chrom, pos), Chunk(**{record.REF: None}))
+        chrom, pos = record.CHROM, record.POS
+        g.setdefault((chrom, pos), Chunk(**{record.REF: False}))
 
         for alt in filter(operator.truth, record.ALT):
             known = getattr(g[chrom, pos], alt) or set()
+            if seq_id in known:
+                continue
 
-            if seq_id not in known:
-                known.add(seq_id)
-                g[chrom, pos] = g[chrom, pos]._replace(**{alt: known})
+            known.add(seq_id)
+            g[chrom, pos] = g[chrom, pos]._replace(**{alt: known})
 
     g.dump()
+
+
+def build_partial_reference(ref_path):
+    if not os.path.isfile(ref_path):
+        raise RuntimeError("Invalid reference sequence: {0!r}"
+                           .format(ref_path))
+
+    g = Genome()
+    f = SeqIO.parse(open(ref_path), "fasta")
+
+    for chr in f:
+        pass
 
 
 def naive_lookup(seq_path, is_diploid=True):
     g = Genome()
     f = pysam.Samfile(seq_path, "rb")
 
-    cov  = defaultdict(int)
+    cov  = defaultdict(lambda: defaultdict(int))
     snps = defaultdict(lambda: defaultdict(int))
     for record in f:
         if record.is_duplicate or record.is_unmapped or record.tid < 0:
@@ -160,18 +145,26 @@ def naive_lookup(seq_path, is_diploid=True):
                 continue
 
             if getattr(g[chrom, pos], base) is not None:
-                cov[pos] += 1
+                cov[pos][base] += 1
                 snps[chrom, pos][base] += record.mapq
+
+    # Calculate scores for each possible SNPs.
+    threshold = 0.
+    for (chrom, pos), candidates in snps.iteritems():
+        for base in candidates:
+            # Resulting qual. score is proportional to the base coverage.
+            candidates[base] /= float(cov[pos][base])
+            threshold = max(candidates[base], threshold)
+
+    threshold /= 2.
 
     # Filter the resulting mapping and output a set of the corresponding
     # genome identifiers.
-    cov_threshold = max(cov.itervalues()) / 2.
-
     tsv = csv.writer(sys.stdout,
                      ["rsid", "chromosome", "position", "genotype"],
                      delimiter="\t")
     for (chrom, pos), candidates in snps.iteritems():
-        if cov[pos] <= cov_threshold:
+        if all(score <= threshold for score in candidates.itervalues()):
             continue
 
         # Order candidates by quality and pick a single allele in the
@@ -188,6 +181,6 @@ def naive_lookup(seq_path, is_diploid=True):
 
 
 if __name__ == "__main__":
-    # update_index(ref_path, seq_path, seq_id)
+    # update_index(seq_path, seq_id)
     # naive_lookup(seq_path)
     pass

@@ -62,6 +62,8 @@ class Genome(MutableMapping):
                 # isn't one avaiable for Python yet.
                 self.cache[chr] = {}
 
+        return [self.cache[chrom] for chrom in chroms]
+
     def __repr__(self):
         return "<Genome: {0!r}>".format(self.cache)
 
@@ -118,19 +120,40 @@ def update_index(seq_path, seq_id):
     g.dump()
 
 
-def build_partial_reference(ref_path):
+def build_partial_reference(ref_path, insert_size=1024):
     if not os.path.isfile(ref_path):
         raise RuntimeError("Invalid reference sequence: {0!r}"
                            .format(ref_path))
 
     g = Genome()
-    f = SeqIO.parse(open(ref_path), "fasta")
+    cropped = []
+    out = open("{0}.cropped{1}".format(*os.path.splitext(ref_path)), "w")
 
-    for chr in f:
-        pass
+    # Note(Sergei): it would be nice to process ref. seq. in chunks,
+    # but unfortunately 'SeqIO' doesn't allow that.
+    for chrom in SeqIO.parse(open(ref_path), "fasta"):
+        chunks = []         # A list of chromosome chunks to save.
+        left, right = 0, 0  # Crop region bounds.
+
+        variants = sorted(*g.load(chrom.id), reverse=True)
+        while variants:
+            pos = variants.pop()
+
+            if pos - right > insert_size or not variants:
+                chunks.append((max(0, left - insert_size),
+                               min(right + insert_size, len(chrom))))
+                right = left = pos
+            else:
+                right = pos
+
+        for left, right in chunks:
+            # The original genomic region is encoded in sequence id.
+            seq = chrom[left:right]
+            seq.id = "{0}|{1}:{2}".format(seq.id, left, right)
+            SeqIO.write(seq, out, "fasta")
 
 
-def naive_lookup(seq_path, is_diploid=True):
+def naive_lookup(seq_path, is_diploid=False):
     g = Genome()
     f = pysam.Samfile(seq_path, "rb")
 
@@ -185,6 +208,7 @@ def naive_lookup(seq_path, is_diploid=True):
 
 
 if __name__ == "__main__":
+    # build_partial_reference(ref_seq)
     # update_index(seq_path, seq_id)
     # naive_lookup(seq_path)
     pass

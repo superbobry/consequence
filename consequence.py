@@ -100,7 +100,10 @@ def update_index(seq_path, seq_id):
         if not record.is_snp:
             continue
 
-        chrom, pos = record.CHROM, record.POS
+        # XXX here comes the punchline, VCF uses 1-based indexing,
+        # so does SAM / BAM, but 'pysam' converts *all* indexes to
+        # 0-based!
+        chrom, pos = record.CHROM, record.POS - 1
         g.setdefault((chrom, pos), Chunk(**{record.REF: False}))
 
         for alt in filter(operator.truth, record.ALT):

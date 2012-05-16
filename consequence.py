@@ -3,7 +3,7 @@
      consequence
      ~~~~~~~~~~~
 
-     Find the consequences of a given genomic sequence; no pun intended.
+     Index-backed SNP caller.
 """
 
 from __future__ import print_function
@@ -18,6 +18,7 @@ from collections import defaultdict, namedtuple, MutableMapping
 
 import vcf
 import pysam
+from Bio import SeqIO
 
 
 _Chunk = namedtuple("_Chunk", list("ACGT"))

@@ -102,9 +102,13 @@ diploid genomes. We just need to pick *two* alleles with the highest
 
 Because we use a *partial* reference sequence, aligned positions in the
 SAM or BAM file should be converted, to the corresponding genomic
-positions. In the simplest case, this can be done with a map from positions
-in the *partial* reference to positions in the full reference. Note,
-that a more space-optimal approach would be to use an interval tree.
+positions. This can be easily done, by embedding the corresponding
+genomic region into sequence identifier, for example:
+
+    >gi|49175990|ref|NC_000913.2||222716:224764
+                                  ^      ^
+                                  |      |
+                                start   end
 
 [4]: http://samtools.sourceforge.net/SAM1.pdf
 

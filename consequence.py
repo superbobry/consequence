@@ -155,6 +155,9 @@ def build_partial_reference(ref_path, insert_size=1024):
 
 def naive_lookup(seq_path, is_diploid=False):
     g = Genome()
+
+    # SAM / BAM file *must* be aligned to *partial* reference, generated
+    # by 'build_partial_reference'.
     f = pysam.Samfile(seq_path, "rb")
 
     cov  = defaultdict(lambda: defaultdict(int))
@@ -163,10 +166,12 @@ def naive_lookup(seq_path, is_diploid=False):
         if record.is_duplicate or record.is_unmapped or record.tid < 0:
             continue
 
-        chrom = f.getrname(record.tid)
+        chrom, mark = f.getrname(record.tid).rsplit("|", 1)
+        left, right = map(int, mark.split(":"))
 
         for pos in record.positions:
             base = record.query[pos - record.pos - record.qstart]
+            pos += left  # Add offset of the aligned genomic region.
 
             if base not in "ACGT" or (chrom, pos) not in g:
                 continue

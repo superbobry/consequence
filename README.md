@@ -135,7 +135,15 @@ base pairs).
 Results
 -------
 
-* Compare to [Crossbow] [6] and [SNiPlay] [7].
+### [E.coli] [6]
 
-[6]: http://www.ncbi.nlm.nih.gov/pubmed/19930550
-[7]: http://www.ncbi.nlm.nih.gov/pmc/articles/PMC3102043/
+    |                           | samtools    | consequence  |
+    |---------------------------+-------------+--------------|
+    | bowtie index construction | 0m6.016s    | 0m0.302s     |
+    | read mapping              | 20m29.780s  | 16m25.363s   |
+    | BAM sorting               | 13m4.921s   | not required |
+    | SNP calling               | 14m54.067s* | 2m27.801s    |
+    |---------------------------+-------------+--------------|
+    |                           | ~47m        | ~18m         |
+
+[6]: http://www.genome.jp/dbget-bin/www_bget?refseq+NC_000913

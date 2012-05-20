@@ -38,29 +38,29 @@ class Genome(MutableMapping):
         self.cache = {}
 
     def dump(self):
-        for chr in self.cache:
-            path = os.path.join(self.base_path, "{0}.index".format(chr))
-            cPickle.dump(self.cache[chr], open(path, "wb"))
+        for chrom in self.cache:
+            path = os.path.join(self.base_path, "{0}.index".format(chrom))
+            cPickle.dump(self.cache[chrom], open(path, "wb"))
 
-    def load(self, *chrs):
-        if not chrs:
+    def load(self, *chroms):
+        if not chroms:
             fnames = glob.glob(os.path.join(self.base_path, "*.index"))
-            chrs = [os.path.basename(name)
+            chroms = [os.path.basename(name)
                     for name, _ext in map(os.path.splitext, fnames)]
 
-        for chr in chrs:
-            if chr in self.cache:
+        for chrom in chroms:
+            if chrom in self.cache:
                 continue  # Oops, already got that sequence loaded.
 
-            path = os.path.join(self.base_path, "{0}.index".format(chr))
+            path = os.path.join(self.base_path, "{0}.index".format(chrom))
             if os.path.isfile(path):
                 # Note(Sergei): this is probably the dumbest thing possible,
                 # but hey -- it's still better than nothing ;)
-                self.cache[chr] = cPickle.load(open(path, "rb"))
+                self.cache[chrom] = cPickle.load(open(path, "rb"))
             else:
                 # Yeah-yeah, it's not a 'persistent trie', because there
                 # isn't one avaiable for Python yet.
-                self.cache[chr] = {}
+                self.cache[chrom] = {}
 
         return [self.cache[chrom] for chrom in chroms]
 
@@ -72,28 +72,29 @@ class Genome(MutableMapping):
         return sum(map(len, self.cache))
 
     def __iter__(self):
-        return ((chr, pos) for pos in self.cache[chr] for chr in self.cache)
+        return ((chrom, pos)
+                for pos in self.cache[chrom] for chrom in self.cache)
 
-    def __contains__(self, (chr, pos)):
-        if chr not in self.cache:
-            self.load(chr)
+    def __contains__(self, (chrom, pos)):
+        if chrom not in self.cache:
+            self.load(chrom)
 
-        return pos in self.cache[chr]
+        return pos in self.cache[chrom]
 
-    def __getitem__(self, (chr, pos)):
-        if chr not in self.cache:
-            self.load(chr)
+    def __getitem__(self, (chrom, pos)):
+        if chrom not in self.cache:
+            self.load(chrom)
 
-        return self.cache[chr][pos]
+        return self.cache[chrom][pos]
 
-    def __setitem__(self, (chr, pos), chunk):
-        if chr not in self.cache:
-            self.load(chr)
+    def __setitem__(self, (chrom, pos), chunk):
+        if chrom not in self.cache:
+            self.load(chrom)
 
-        self.cache[chr][pos] = chunk
+        self.cache[chrom][pos] = chunk
 
-    def __delitem__(self, (chr , pos)):
-        del self.cache[chr][pos]
+    def __delitem__(self, (chrom , pos)):
+        del self.cache[chrom][pos]
 
 
 def update_index(seq_path, seq_id):

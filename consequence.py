@@ -206,7 +206,7 @@ def naive_lookup(seq_path, is_diploid=False):
                             key=lambda (_, quality): quality,
                             reverse=True)
         genotype = "".join(base for (base, _) in candidates[:is_diploid + 1])
-        tsv.writerow(["*", chrom, str(pos), genotype])
+        tsv.writerow(["*", chrom, str(pos + 1), genotype])
 
     # Should we store frequency of an SNP in a particular sample in the
     # index?

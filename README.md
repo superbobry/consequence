@@ -137,13 +137,25 @@ Results
 
 ### [E.coli] [6]
 
+    |                           | samtools   | consequence  |
+    |---------------------------+------------+--------------|
+    | bowtie index construction | 0m6.016s   | 0m0.302s     |
+    | read mapping              | 20m29.780s | 16m25.363s   |
+    | BAM sorting               | 13m4.921s  | not required |
+    | SNP calling               | 14m54.067s | 2m27.801s    |
+    |---------------------------+------------+--------------|
+    |                           | ~47m       | ~18m         |
+
+### [GRCh37]
+
     |                           | samtools    | consequence  |
     |---------------------------+-------------+--------------|
-    | bowtie index construction | 0m6.016s    | 0m0.302s     |
-    | read mapping              | 20m29.780s  | 16m25.363s   |
-    | BAM sorting               | 13m4.921s   | not required |
-    | SNP calling               | 14m54.067s* | 2m27.801s    |
+    | bowtie index construction | 191m1.332s  | 69m16.095s   |
+    | read mapping              | 42m26.060s  | 31m21.879s   |
+    | BAM sorting               | 30m42.563s  | not required |
+    | SNP calling               | 103m34.262s | 61m17.641s   |
+    | BCF->VCF conversion       | 11m31.194s  | not required |
     |---------------------------+-------------+--------------|
-    |                           | ~47m        | ~18m         |
+    |                           | ~377m       | ~161m        |
 
 [6]: http://www.genome.jp/dbget-bin/www_bget?refseq+NC_000913

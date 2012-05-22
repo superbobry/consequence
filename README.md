@@ -146,7 +146,9 @@ Results
     |---------------------------+------------+--------------|
     |                           | ~47m       | ~18m         |
 
-### [GRCh37]
+Total number of SNPs found by both approaches matched exactly.
+
+### [GRCh37] [7]
 
     |                           | samtools    | consequence  |
     |---------------------------+-------------+--------------|
@@ -158,4 +160,8 @@ Results
     |---------------------------+-------------+--------------|
     |                           | ~377m       | ~161m        |
 
+`consequence` failed to find 1010 SNPs, discovered by the first approach;
+only 127 of those SNPs had Phred qual. score exceeding 10.
+
 [6]: http://www.genome.jp/dbget-bin/www_bget?refseq+NC_000913
+[7]: http://www.ncbi.nlm.nih.gov/projects/genome/assembly/grc/human/

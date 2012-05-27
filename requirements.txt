@@ -1,3 +1,4 @@
 biopython==1.59
 pysam==0.6
-PyVCF==0.4.3
+opster>=3.7
+PyVCF==0.4.4

@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
      consequence
@@ -17,6 +18,7 @@ import sys
 from collections import defaultdict, namedtuple, MutableMapping
 
 import vcf
+import opster
 import pysam
 from Bio import SeqIO
 
@@ -97,14 +99,19 @@ class Genome(MutableMapping):
         del self.cache[chrom][pos]
 
 
-def update_index(seq_path, seq_id, with_dbsnp=None):
-    g = Genome()
+options = [(None, "dbsnp", None, "path to dbSNP release in VCF format")]
 
-    if with_dbsnp:
-        dbsnp = dict((r.POS, r.ID)
-                     for r in vcf.VCFReader(open(with_dbsnp, "rb")))
-    else:
-        dbsnp = {}
+@opster.command(options, name="index", usage="path/to/snps.vcf id")
+def update_index(seq_path, seq_id, dbsnp=None, index_root=None, quiet=None):
+    """Update 'consequence' index with SNPs from a given VCF file.
+
+    If `dbsnp` argument is provided, SNPs missing in `dbsnp` will *not*
+    be indexed.
+    """
+    g = Genome(base_path=index_root)
+
+    dbsnp = {} if not dbsnp else \
+        dict((r.POS, r.ID) for r in vcf.VCFReader(open(dbsnp, "rb")))
 
     for record in vcf.VCFReader(open(seq_path, "rb")):
         if not record.is_snp:
@@ -115,7 +122,7 @@ def update_index(seq_path, seq_id, with_dbsnp=None):
         # 0-based!
         chrom, pos = record.CHROM, record.POS - 1
 
-        if with_dbsnp and pos not in dbsnp:
+        if dbsnp and pos not in dbsnp:
             continue
 
         g.setdefault((chrom, pos),  # vvv -- dnSNP name defaults to '*'.
@@ -132,12 +139,17 @@ def update_index(seq_path, seq_id, with_dbsnp=None):
     g.dump()
 
 
-def build_partial_reference(ref_path, insert_size=1024):
+options = [(None, "insert-size", 1024, "maximum expected insert size")]
+
+@opster.command(options, name="partial", usage="path/to/reference.fasta")
+def build_partial_reference(ref_path, insert_size=1024,
+                            index_root=None, quiet=None):
+    """Build a partial reference from a full reference sequence."""
     if not os.path.isfile(ref_path):
         raise RuntimeError("Invalid reference sequence: {0!r}"
                            .format(ref_path))
 
-    g = Genome()
+    g = Genome(base_path=index_root)
     out = open("{0}.cropped{1}".format(*os.path.splitext(ref_path)), "w")
 
     # Note(Sergei): it would be nice to process ref. seq. in chunks,
@@ -164,8 +176,12 @@ def build_partial_reference(ref_path, insert_size=1024):
             SeqIO.write(seq, out, "fasta")
 
 
-def naive_lookup(seq_path, is_diploid=False):
-    g = Genome()
+options = [("d", "diploid", None, "output results for a diploid genome")]
+
+@opster.command(options, name="lookup", usage="path/to/aligned_reads.bam")
+def naive_lookup(seq_path, diploid=False, index_root=None, quiet=None):
+    """Lookup SNPs from aligned reads in the 'consequnce' index."""
+    g = Genome(base_path=index_root)
 
     # SAM / BAM file *must* be aligned to *partial* reference, generated
     # by 'build_partial_reference'.
@@ -215,7 +231,7 @@ def naive_lookup(seq_path, is_diploid=False):
         candidates = sorted(candidates.iteritems(),
                             key=lambda (_, quality): quality,
                             reverse=True)
-        genotype = "".join(base for (base, _) in candidates[:is_diploid + 1])
+        genotype = "".join(base for (base, _) in candidates[:diploid + 1])
         tsv.writerow([g[chrom, pos].name,
                       chrom, str(pos + 1), genotype])
 
@@ -225,7 +241,8 @@ def naive_lookup(seq_path, is_diploid=False):
 
 
 if __name__ == "__main__":
-    # build_partial_reference(ref_seq)
-    # update_index(seq_path, seq_id)
-    # naive_lookup(seq_path)
-    pass
+    globaloptions = [
+        ("q", "quiet", False, "do not produce any output while running"),
+        ("i", "index-root", None, "path to 'consequnce' index")
+    ]
+    opster.dispatch(globaloptions=globaloptions)

@@ -21,11 +21,11 @@ import pysam
 from Bio import SeqIO
 
 
-_Chunk = namedtuple("_Chunk", list("ACGT"))
+_Chunk = namedtuple("_Chunk", list(["id", "A", "C", "G", "T"]))
 
 class Chunk(_Chunk):
-    def __new__(cls, A=None, C=None, G=None, T=None):
-        return super(cls, Chunk).__new__(cls, A, C, G, T)
+    def __new__(cls, id=None, A=None, C=None, G=None, T=None):
+        return super(cls, Chunk).__new__(cls, id, A, C, G, T)
 
 
 class Genome(MutableMapping):
@@ -73,7 +73,7 @@ class Genome(MutableMapping):
 
     def __iter__(self):
         return ((chrom, pos)
-                for pos in self.cache[chrom] for chrom in self.cache)
+                for chrom in self.cache for pos in self.cache[chrom])
 
     def __contains__(self, (chrom, pos)):
         if chrom not in self.cache:
@@ -97,8 +97,14 @@ class Genome(MutableMapping):
         del self.cache[chrom][pos]
 
 
-def update_index(seq_path, seq_id):
+def update_index(seq_path, seq_id, with_dbsnp=None):
     g = Genome()
+
+    if with_dbsnp:
+        dbsnp = dict((r.POS, r.ID)
+                     for r in vcf.VCFReader(open(with_dbsnp, "rb")))
+    else:
+        dbsnp = {}
 
     for record in vcf.VCFReader(open(seq_path, "rb")):
         if not record.is_snp:
@@ -108,7 +114,12 @@ def update_index(seq_path, seq_id):
         # so does SAM / BAM, but 'pysam' converts *all* indexes to
         # 0-based!
         chrom, pos = record.CHROM, record.POS - 1
-        g.setdefault((chrom, pos), Chunk(**{record.REF: False}))
+
+        if with_dbsnp and pos not in dbsnp:
+            continue
+
+        g.setdefault((chrom, pos),  # vvv -- dnSNP name defaults to '*'.
+                     Chunk(dbsnp.get(pos, "*"), **{record.REF: False}))
 
         for alt in filter(operator.truth, record.ALT):
             known = getattr(g[chrom, pos], alt) or set()
@@ -127,7 +138,6 @@ def build_partial_reference(ref_path, insert_size=1024):
                            .format(ref_path))
 
     g = Genome()
-    cropped = []
     out = open("{0}.cropped{1}".format(*os.path.splitext(ref_path)), "w")
 
     # Note(Sergei): it would be nice to process ref. seq. in chunks,
@@ -206,7 +216,8 @@ def naive_lookup(seq_path, is_diploid=False):
                             key=lambda (_, quality): quality,
                             reverse=True)
         genotype = "".join(base for (base, _) in candidates[:is_diploid + 1])
-        tsv.writerow(["*", chrom, str(pos + 1), genotype])
+        tsv.writerow([g[chrom, pos].name,
+                      chrom, str(pos + 1), genotype])
 
     # Should we store frequency of an SNP in a particular sample in the
     # index?

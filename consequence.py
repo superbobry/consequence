@@ -101,7 +101,7 @@ class Genome(MutableMapping):
         del self.cache[chrom][pos]
 
 
-options = [(None, "dbsnp", None, "path to dbSNP release in VCF format")]
+options = [("", "dbsnp", None, "path to dbSNP release in VCF format")]
 
 @opster.command(options, name="index", usage="path/to/snps.vcf id")
 def update_index(seq_path, seq_id, dbsnp=None, index_root=None, quiet=None):
@@ -141,7 +141,7 @@ def update_index(seq_path, seq_id, dbsnp=None, index_root=None, quiet=None):
     g.dump()
 
 
-options = [(None, "insert-size", 1024, "maximum expected insert size")]
+options = [("", "insert-size", 1024, "maximum expected insert size")]
 
 @opster.command(options, name="partial", usage="path/to/reference.fasta")
 def build_partial_reference(ref_path, insert_size=1024,

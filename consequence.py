@@ -12,14 +12,16 @@ from __future__ import print_function
 import csv
 import cPickle
 import glob
+import itertools
 import operator
 import os.path
 import sys
 from collections import defaultdict, namedtuple, MutableMapping
 
-import vcf
+import numpy as np
 import opster
 import pysam
+import vcf
 from Bio import SeqIO
 
 
@@ -48,7 +50,7 @@ class Genome(MutableMapping):
         if not chroms:
             fnames = glob.glob(os.path.join(self.base_path, "*.index"))
             chroms = [os.path.basename(name)
-                    for name, _ext in map(os.path.splitext, fnames)]
+                      for name, _ext in map(os.path.splitext, fnames)]
 
         for chrom in chroms:
             if chrom in self.cache:
@@ -208,14 +210,13 @@ def naive_lookup(seq_path, diploid=False, index_root=None, quiet=None):
                 snps[chrom, pos][base] += record.mapq
 
     # Calculate scores for each possible SNPs.
-    threshold = 0.
     for (chrom, pos), candidates in snps.iteritems():
         for base in candidates:
             # Resulting qual. score is proportional to the base coverage.
             candidates[base] /= float(cov[pos][base])
-            threshold = max(candidates[base], threshold)
 
-    threshold /= 2.
+    threshold = np.median(np.fromiter(itertools.chain(*snps.itervalues()),
+                                      np.float))
 
     # Filter the resulting mapping and output a set of the corresponding
     # genome identifiers.

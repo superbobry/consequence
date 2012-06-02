@@ -209,7 +209,7 @@ def naive_lookup(seq_path, diploid=False, index_root=None, quiet=None):
 
     scores = itertools.chain(*(candidates.itervalues()
                                for candidates in snps.itervalues()))
-    threshold = np.median(np.fromiter(scores, np.float64))
+    threshold = np.percentile(np.fromiter(scores, np.float64), 25.)
 
     # Filter the resulting mapping and output a set of the corresponding
     # genome identifiers.

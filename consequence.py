@@ -9,10 +9,13 @@
 
 from __future__ import print_function
 
-import csv
 import cPickle
+import csv
+import fcntl
+import functools
 import glob
 import itertools
+import logging
 import operator
 import os.path
 import sys
@@ -23,6 +26,21 @@ import opster
 import pysam
 import vcf
 from Bio import SeqIO
+
+
+def setup_logging(func):
+    levels = [logging.WARNING, logging.INFO, logging.DEBUG]
+
+    @functools.wraps(func)
+    def inner(*args, **kwargs):
+        verbosity = kwargs.pop("verbosity", 1)
+        if verbosity > len(levels) or verbosity < 0:
+            raise opster.ParseError("vebosity", "should be 0, 1 or 2")
+
+        logging.basicConfig(level=levels[verbosity])
+        return func(*args, **kwargs)
+
+    return inner
 
 
 _Chunk = namedtuple("_Chunk", list(["id", "A", "C", "G", "T"]))
@@ -42,11 +60,22 @@ class Genome(MutableMapping):
         self.cache = {}
 
     def dump(self):
+        logging.debug("Dumping genome index to %s.", self.base_path)
+
         for chrom in self.cache:
             path = os.path.join(self.base_path, "{0}.index".format(chrom))
-            cPickle.dump(self.cache[chrom], open(path, "wb"))
+
+            f = open(path, "wb")
+            logging.info("Locking %s before writing anything.", path)
+            fcntl.lockf(f.fileno(), fcntl.LOCK_EX)
+            cPickle.dump(self.cache[chrom], f)
+            fcntl.lockf(f.fileno(), fcntl.LOCK_UN)
+            logging.info("Done with %s.", chrom)
 
     def load(self, *chroms):
+        logging.debug("Loading %s chromosomes from %s.",
+                      (", ".join(chroms) or "all"), self.base_path)
+
         if not chroms:
             fnames = glob.glob(os.path.join(self.base_path, "*.index"))
             chroms = [os.path.basename(name)
@@ -66,6 +95,7 @@ class Genome(MutableMapping):
                 # isn't one avaiable for Python yet.
                 self.cache[chrom] = {}
 
+        logging.debug("Done.")
         return [self.cache[chrom] for chrom in chroms]
 
     def __repr__(self):
@@ -104,7 +134,8 @@ class Genome(MutableMapping):
 options = [("", "dbsnp", None, "path to dbSNP release in VCF format")]
 
 @opster.command(options, name="index", usage="path/to/snps.vcf id")
-def update_index(seq_path, seq_id, dbsnp=None, index_root=None, quiet=None):
+@setup_logging
+def update_index(seq_path, seq_id, dbsnp=None, index_root=None):
     """Update 'consequence' index with SNPs from a given VCF file.
 
     If `dbsnp` argument is provided, SNPs missing in `dbsnp` will *not*
@@ -144,8 +175,8 @@ def update_index(seq_path, seq_id, dbsnp=None, index_root=None, quiet=None):
 options = [("", "insert-size", 1024, "maximum expected insert size")]
 
 @opster.command(options, name="partial", usage="path/to/reference.fasta")
-def build_partial_reference(ref_path, insert_size=1024,
-                            index_root=None, quiet=None):
+@setup_logging
+def build_partial_reference(ref_path, insert_size=1024, index_root=None):
     """Build a partial reference from a full reference sequence."""
     if not os.path.isfile(ref_path):
         raise RuntimeError("Invalid reference sequence: {0!r}"
@@ -181,7 +212,8 @@ def build_partial_reference(ref_path, insert_size=1024,
 options = [("d", "diploid", None, "output results for a diploid genome")]
 
 @opster.command(options, name="lookup", usage="path/to/aligned_reads.bam")
-def naive_lookup(seq_path, diploid=False, index_root=None, quiet=None):
+@setup_logging
+def naive_lookup(seq_path, diploid=False, index_root=None):
     """Lookup SNPs from aligned reads in the 'consequnce' index."""
     g = Genome(base_path=index_root)
 
@@ -210,6 +242,7 @@ def naive_lookup(seq_path, diploid=False, index_root=None, quiet=None):
     scores = itertools.chain(*(candidates.itervalues()
                                for candidates in snps.itervalues()))
     threshold = np.percentile(np.fromiter(scores, np.float64), 25.)
+    logging.debug("Using threshold: %.2f.", threshold)
 
     # Filter the resulting mapping and output a set of the corresponding
     # genome identifiers.
@@ -218,6 +251,8 @@ def naive_lookup(seq_path, diploid=False, index_root=None, quiet=None):
                      delimiter="\t")
     for (chrom, pos), candidates in snps.iteritems():
         if all(score <= threshold for score in candidates.itervalues()):
+            logging.debug("Filtered out %r at chromosome %s, 1-position %i.",
+                          candidates.items(), chrom, pos + 1)
             continue
 
         # Order candidates by quality and pick a single allele in the
@@ -236,7 +271,7 @@ def naive_lookup(seq_path, diploid=False, index_root=None, quiet=None):
 
 if __name__ == "__main__":
     globaloptions = [
-        ("q", "quiet", False, "do not produce any output while running"),
-        ("i", "index-root", None, "path to 'consequnce' index")
+        ("i", "index-root", None, "path to 'consequnce' index"),
+        ("v", "verbosity", 1, "verbosity level"),
     ]
     opster.dispatch(globaloptions=globaloptions)

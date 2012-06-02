@@ -189,7 +189,6 @@ def naive_lookup(seq_path, diploid=False, index_root=None, quiet=None):
     # by 'build_partial_reference'.
     f = pysam.Samfile(seq_path, "rb")
 
-    cov  = defaultdict(lambda: defaultdict(int))
     snps = defaultdict(lambda: defaultdict(int))
     for record in f:
         if record.is_duplicate or record.is_unmapped or record.tid < 0:
@@ -206,17 +205,11 @@ def naive_lookup(seq_path, diploid=False, index_root=None, quiet=None):
                 continue
 
             if getattr(g[chrom, pos], base) is not None:
-                cov[pos][base] += 1
                 snps[chrom, pos][base] += record.mapq
 
-    # Calculate scores for each possible SNPs.
-    for (chrom, pos), candidates in snps.iteritems():
-        for base in candidates:
-            # Resulting qual. score is proportional to the base coverage.
-            candidates[base] /= float(cov[pos][base])
-
-    threshold = np.median(np.fromiter(itertools.chain(*snps.itervalues()),
-                                      np.float))
+    scores = itertools.chain(*(candidates.itervalues()
+                               for candidates in snps.itervalues()))
+    threshold = np.median(np.fromiter(scores, np.float64))
 
     # Filter the resulting mapping and output a set of the corresponding
     # genome identifiers.
@@ -233,7 +226,7 @@ def naive_lookup(seq_path, diploid=False, index_root=None, quiet=None):
                             key=lambda (_, quality): quality,
                             reverse=True)
         genotype = "".join(base for (base, _) in candidates[:diploid + 1])
-        tsv.writerow([g[chrom, pos].name,
+        tsv.writerow([g[chrom, pos].id,
                       chrom, str(pos + 1), genotype])
 
     # Should we store frequency of an SNP in a particular sample in the

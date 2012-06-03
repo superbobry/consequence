@@ -221,10 +221,15 @@ def naive_lookup(seq_path, diploid=False, index_root=None):
     # by 'build_partial_reference'.
     f = pysam.Samfile(seq_path, "rb")
 
-    snps = defaultdict(lambda: defaultdict(int))
+    logging.debug("Starting lookup loop for %s.", seq_path)
+    snps, counter = defaultdict(lambda: defaultdict(int)), 0
     for record in f:
         if record.is_duplicate or record.is_unmapped or record.tid < 0:
             continue
+
+        counter += 1
+        if not counter % 10000:
+            logging.info("%i records processed.", counter)
 
         chrom, mark = f.getrname(record.tid).rsplit("|", 1)
         left, right = map(int, mark.split(":"))
@@ -239,6 +244,7 @@ def naive_lookup(seq_path, diploid=False, index_root=None):
             if getattr(g[chrom, pos], base) is not None:
                 snps[chrom, pos][base] += record.mapq
 
+    logging.debug("Finished lookup, calculating threshold.")
     scores = itertools.chain(*(candidates.itervalues()
                                for candidates in snps.itervalues()))
     threshold = np.percentile(np.fromiter(scores, np.float64), 25.)

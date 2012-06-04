@@ -209,11 +209,12 @@ def build_partial_reference(ref_path, insert_size=1024, index_root=None):
             SeqIO.write(seq, out, "fasta")
 
 
-options = [("d", "diploid", None, "output results for a diploid genome")]
+options = [("c", "cutoff", 25., "cutoff value for filtering phase"),
+           ("d", "diploid", False, "output results for a diploid genome")]
 
 @opster.command(options, name="lookup", usage="path/to/aligned_reads.bam")
 @setup_logging
-def naive_lookup(seq_path, diploid=False, index_root=None):
+def naive_lookup(seq_path, cutoff=None, diploid=None, index_root=None):
     """Lookup SNPs from aligned reads in the 'consequnce' index."""
     g = Genome(base_path=index_root)
 
@@ -247,7 +248,7 @@ def naive_lookup(seq_path, diploid=False, index_root=None):
     logging.debug("Finished lookup, calculating threshold.")
     scores = itertools.chain(*(candidates.itervalues()
                                for candidates in snps.itervalues()))
-    threshold = np.percentile(np.fromiter(scores, np.float64), 25.)
+    threshold = np.percentile(np.fromiter(scores, np.float64), cutoff)
     logging.debug("Using threshold: %.2f.", threshold)
 
     # Filter the resulting mapping and output a set of the corresponding

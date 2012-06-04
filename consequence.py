@@ -73,9 +73,6 @@ class Genome(MutableMapping):
             logging.info("Done with %s.", chrom)
 
     def load(self, *chroms):
-        logging.debug("Loading %s chromosomes from %s.",
-                      (", ".join(chroms) or "all"), self.base_path)
-
         if not chroms:
             fnames = glob.glob(os.path.join(self.base_path, "*.index"))
             chroms = [os.path.basename(name)
@@ -87,15 +84,19 @@ class Genome(MutableMapping):
 
             path = os.path.join(self.base_path, "{0}.index".format(chrom))
             if os.path.isfile(path):
+                logging.debug("Loading chromosome %s from %s.",
+                              chrom, self.base_path)
                 # Note(Sergei): this is probably the dumbest thing possible,
                 # but hey -- it's still better than nothing ;)
                 self.cache[chrom] = cPickle.load(open(path, "rb"))
+                logging.debug("Done.")
             else:
+                logging.debug("Creating a stub for chromosome %s.", chrom)
+
                 # Yeah-yeah, it's not a 'persistent trie', because there
                 # isn't one avaiable for Python yet.
                 self.cache[chrom] = {}
 
-        logging.debug("Done.")
         return [self.cache[chrom] for chrom in chroms]
 
     def __repr__(self):

@@ -1,4 +1,3 @@
-PyVCF==0.4.4
 biopython==1.59
 numpy==1.6.1
 opster>=3.7

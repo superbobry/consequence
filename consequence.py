@@ -24,7 +24,7 @@ from collections import defaultdict, namedtuple, MutableMapping
 import numpy as np
 import opster
 import pysam
-import vcf
+import sn
 from Bio import SeqIO
 
 
@@ -137,38 +137,42 @@ options = [("", "dbsnp", None, "path to dbSNP release in VCF format")]
 @opster.command(options, name="index", usage="path/to/snps.vcf id")
 @setup_logging
 def update_index(seq_path, seq_id, dbsnp=None, index_root=None):
-    """Update 'consequence' index with SNPs from a given VCF file.
+    """Update 'consequence' index with SNPs from a given file.
 
-    If `dbsnp` argument is provided, SNPs missing in `dbsnp` will *not*
-    be indexed.
+    Currently a file should either be in VCF, with a filename like
+    ``*.vcf``, or in one of openSNP-provided formats, in that case,
+    the name is expected to be left unmodified:
+    ``user_id.format.submission_id``.
+
+    If `dbsnp` argument is provided, only SNPs contained in `dbsnp`
+    will be indexed.
     """
     g = Genome(base_path=index_root)
 
     dbsnp = {} if not dbsnp else \
         dict((r.POS, r.ID) for r in vcf.VCFReader(open(dbsnp, "rb")))
 
-    for record in vcf.VCFReader(open(seq_path, "rb")):
-        if not record.is_snp:
-            continue
+    for record in sn.parse(seq_path,
+        source="vcf" if seq_path.endswith(".vcf") else None):
 
         # XXX here comes the punchline, VCF uses 1-based indexing,
         # so does SAM / BAM, but 'pysam' converts *all* indexes to
         # 0-based!
-        chrom, pos = record.CHROM, record.POS - 1
+        chrom, pos = key = record.chromosome, record.position - 1
 
         if dbsnp and pos not in dbsnp:
             continue
+        elif key not in g:
+            # Note(Sergei): dbnSNP name defaults to '*'.
+            g[key] = Chunk(dbsnp.get(pos, record.name or "*"))
 
-        g.setdefault((chrom, pos),  # vvv -- dnSNP name defaults to '*'.
-                     Chunk(dbsnp.get(pos, "*"), **{record.REF: False}))
-
-        for alt in filter(operator.truth, record.ALT):
-            known = getattr(g[chrom, pos], alt) or set()
+        for alt in record.genotype:
+            known = getattr(g[key], alt, None) or set()
             if seq_id in known:
                 continue
 
             known.add(seq_id)
-            g[chrom, pos] = g[chrom, pos]._replace(**{alt: known})
+            g[key] = g[key]._replace(**{alt: known})
 
     g.dump()
 

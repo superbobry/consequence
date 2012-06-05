@@ -3,3 +3,4 @@ biopython==1.59
 numpy==1.6.1
 opster>=3.7
 pysam==0.6
+-e git+http://github.com/superbobry/snpy#egg=snpy-0.1
